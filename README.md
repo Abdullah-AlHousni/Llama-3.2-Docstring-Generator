@@ -187,7 +187,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import PeftModel
 
 base_model_id = "meta-llama/Llama-3.2-1B-Instruct"
-adapter_id = "Abdul1102/llama32-1b-python-docstrings-qlora"  # <- change this
+adapter_id = "Abdul1102/llama32-1b-python-docstrings-qlora"
 
 tokenizer = AutoTokenizer.from_pretrained(base_model_id)
 model = AutoModelForCausalLM.from_pretrained(base_model_id, device_map="auto")
