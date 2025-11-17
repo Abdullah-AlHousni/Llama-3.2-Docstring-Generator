@@ -1,5 +1,3 @@
-# Llama-3.2-Docstring-Generator
-
 # Llama 3.2 Docstring Generator (Python + QLoRA)
 
 This project fine-tunes **Llama 3.2 1B Instruct** on the **CodeSearchNet (Python)** dataset to generate **concise one-line Python docstrings** from function bodies.
@@ -34,134 +32,117 @@ def get_vid_from_url(url):
         parse_query_param(url, 'v') or \
         parse_query_param(parse_query_param(url, 'u'), 'v')
 ```
+
 Ground truth:
 Extracts video ID from URL.
 
 Model prediction:
-Extracts video ID from URL. ✅
+Extracts video ID from URL. 
+
+---
 
 # Project Structure
 
-notebook.ipynb – Google Colab notebook used for:
+- **docstring_generator.ipynb** – Google Colab notebook used for:
+  - loading data from Hugging Face  
+  - preprocessing  
+  - QLoRA fine-tuning  
+  - evaluation and sample generations  
 
-loading data from Hugging Face
+- **inference.py** – small script to load the fine-tuned adapter and generate docstrings.
 
-preprocessing
+- **README.md** – project documentation
 
-QLoRA fine-tuning
 
-evaluation and sample generations
+## Dataset
 
-inference.py (optional) – small script to load the fine-tuned adapter and generate docstrings.
-
-This README 🙂
-
-# Dataset
-
-Source: Nan-Do/code-search-net-python
+Dataset used: **Nan-Do/code-search-net-python** on Hugging Face.
 
 We use:
+- `code` as input  
+- First non-empty line of `docstring` as target  
 
-code as the input (full function body)
-
-docstring as the target (we take the first non-empty line)
-
-# Preprocessing
-
-For each example:
-Extract the first non-empty line of docstring.
-
-Treat that as a one-line docstring.
-
-Build a simple instruction-style prompt, e.g.:
+Training prompt style (simplified for clarity):
 
 Write a one-line Python docstring for this function:
-
-{code}
+{function source}
 
 """
-The model is trained to generate the missing line after """.
 
-We also subsample the dataset (≈ 1,000 train examples, plus small val/test sets) to keep training fast and Colab-friendly.
+Only the missing line after the triple quotes is learned.
 
-# Model & Training
+To keep training lightweight, around ~1,000 samples were used.
 
-Base model: meta-llama/Llama-3.2-1B-Instruct
+---
 
-Fine-tuning method: QLoRA (4-bit) with PEFT
- and bitsandbytes
+## Model & Training
 
-Hardware: Google Colab GPU (T4/L4-class)
+- Base model: meta-llama/Llama-3.2-1B-Instruct  
+- Fine-tuning: QLoRA with 4-bit quantization  
+- Frameworks: Transformers, PEFT, Datasets  
+- Hardware: Google Colab T4/L4 GPU  
+- Sequence length: 256–512 tokens  
+- Epochs: 1  
+- Objective: causal LM  
 
-Objective: causal language modeling over the full prompt+target text
+QLoRA allows effective fine-tuning on small GPUs by training only low-rank adapter layers while keeping the base model 4-bit quantized.
 
-Key choices:
+---
 
-Sequence length: max_length = 256–512 tokens
+## 📊 Evaluation
 
-Batch size: small (effective batch controlled via gradient accumulation)
+Evaluated on a 50-sample test subset using BLEU and ROUGE.
 
-Epochs: 1 (small dataset, model converges quickly)
+Results:
+- BLEU ≈ **12.4**  
+- ROUGE-1 ≈ **0.78**  
+- ROUGE-2 ≈ **0.74**  
+- ROUGE-L ≈ **0.78**  
 
-Optimizer: standard AdamW via transformers.Trainer
+ROUGE scores above 0.7 indicate strong semantic overlap.  
+BLEU is expected to be low for single-line summarization tasks.
 
-# Evaluation
-
-I evaluated the model on a small held-out test subset using:
-
-BLEU (via sacrebleu)
-
-ROUGE-1 / ROUGE-2 / ROUGE-L (via rouge)
-
-Sample scores (on ~50 test examples):
-
-BLEU: ~12.4
-
-ROUGE-1: ~0.78
-
-ROUGE-2: ~0.74
-
-ROUGE-L: ~0.78
-
-For short one-line docstrings, ROUGE is more informative than BLEU.
-These scores indicate the model usually captures the main action and important tokens, and often matches the reference docstring exactly.
+---
 
 # More Examples
 
-1) Simple case – exact match
+**Example 1 – Exact match**
 
 CODE:
+```
   def _convert_date_to_dict(field_date):
       """
       Convert native python ``datetime.date`` object  to a format supported by the API
       """
       return {DAY: field_date.day, MONTH: field_date.month, YEAR: field_date.year}
-
+```
 GROUND TRUTH:
   Convert native python ``datetime.date`` object  to a format supported by the API
 
 PREDICTION:
   Convert native python ``datetime.date`` object  to a format supported by the API
 
-2) Slightly weird original docstring
+**Example 2 – Exact match**
 
 CODE:
+```
   def sina_xml_to_url_list(xml_data):
       """str->list
       Convert XML to URL List.
       From Biligrab.
       """
       ...
-
+```
 GROUND TRUTH:
   str->list
 
 PREDICTION:
   str->list
 
-3) Occasional failure (echoes instruction instead of docstring)
+**Example 4 – Occasional failure**
 
 CODE:
+```
   def save_to_file(self, path, filename, **params):
       """
       Saves binary content to a file with name filename. filename should
@@ -171,18 +152,27 @@ CODE:
       Useful for downloading .xlsx files.
       """
       ...
+```
 
 GROUND TRUTH:
   Saves binary content to a file with name filename. filename should
 
-PREDICTION:
+PREDICTION: (Echoed part of the instruction instead of summarizing the code):
   Write a one-line Python docstring for this function:
 
   def save_to_file(self, path, filename, **params):
 
 Most outputs are correct or near-correct; a small fraction either output nothing or echo part of the instruction.
 
-# How to Use the Model
+## How to Use the Model
+
+1. Load the base model and tokenizer  
+2. Load the fine-tuned QLoRA adapter  
+3. Create a prompt:  
+   Write a one-line Python docstring for this function:  
+   {code}  
+   """  
+4. Generate continuation and clean up quotes/newlines  
 
 You can load the fine-tuned adapter and tokenizer directly from Hugging Face:
 ```python
@@ -197,11 +187,7 @@ model = AutoModelForCausalLM.from_pretrained(base_model_id, device_map="auto")
 model = PeftModel.from_pretrained(model, adapter_id)
 
 def make_prompt(code: str) -> str:
-    return f"""Write a one-line Python docstring for this function:
-
-{code}
-
-\"\"\""""
+    return f'Write a one-line Python docstring for this function:\n\n{code}\n\n"""'
 
 def generate_docstring(code: str, max_new_tokens: int = 32):
     prompt = make_prompt(code)
@@ -229,37 +215,29 @@ def generate_docstring(code: str, max_new_tokens: int = 32):
     return continuation.strip().strip('"').strip()
 ```
 
-# Limitations & Future Work
+## ⚠️ Limitations
 
-Sometimes the model:
+- Occasionally outputs empty strings or echoes the prompt  
+- Limited to Python  
+- Supports only one-line docstrings  
+- Dataset docstrings are noisy, which can affect BLEU scores  
 
-echoes part of the instruction instead of producing a real docstring,
+---
 
-or produces an empty string for tricky functions.
+## Future Work
 
-It only supports Python and only single-line docstrings in this project.
+- Multi-epoch training for more consistency  
+- Multi-line docstring generation  
+- Larger model (3B) for robustness  
+- Add a Gradio demo  
+- Extend to Java, JavaScript, or other languages  
 
-Trained on a relatively small subset of CodeSearchNet for speed.
+---
 
-Possible improvements:
+## Motivation
 
-Train on more examples and/or 2–3 epochs.
-
-Add support for multi-line docstrings.
-
-Extend to other languages (Java, JS, etc.).
-
-Add preference tuning so the model prefers more concise / high-signal descriptions.
-
-# Motivation
-
-This project is meant as a modern, small-scale LLM fine-tuning example:
-
-Uses a current model (Llama 3.2 1B Instruct)
-
-Uses QLoRA adapters instead of full fine-tuning
-
-Runs on a single Colab GPU
-
-Produces a practical tool: auto-generated docstrings for Python functions
-
+This project demonstrates:
+- Modern low-resource fine-tuning (QLoRA + 4-bit)  
+- Training a real, practical model from open data  
+- End-to-end pipeline: preprocessing → fine-tuning → evaluation → HF upload  
+- A clean, reproducible workflow for LLM fine-tuning projects  
