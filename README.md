@@ -34,9 +34,11 @@ def get_vid_from_url(url):
 ```
 
 Ground truth:
+
 Extracts video ID from URL.
 
 Model prediction:
+
 Extracts video ID from URL. 
 
 ---
@@ -117,10 +119,12 @@ CODE:
       return {DAY: field_date.day, MONTH: field_date.month, YEAR: field_date.year}
 ```
 GROUND TRUTH:
-  Convert native python ``datetime.date`` object  to a format supported by the API
+
+    Convert native python ``datetime.date`` object  to a format supported by the API
 
 PREDICTION:
-  Convert native python ``datetime.date`` object  to a format supported by the API
+
+    Convert native python ``datetime.date`` object  to a format supported by the API
 
 **Example 2 – Exact match**
 
@@ -134,10 +138,12 @@ CODE:
       ...
 ```
 GROUND TRUTH:
-  str->list
+
+    str->list
 
 PREDICTION:
-  str->list
+
+    str->list
 
 **Example 4 – Occasional failure**
 
@@ -155,12 +161,13 @@ CODE:
 ```
 
 GROUND TRUTH:
-  Saves binary content to a file with name filename. filename should
 
-PREDICTION: (Echoed part of the instruction instead of summarizing the code):
-  Write a one-line Python docstring for this function:
+    Saves binary content to a file with name filename. filename should
 
-  def save_to_file(self, path, filename, **params):
+PREDICTION (Echoed part of the instruction instead of summarizing the code):
+
+    Write a one-line Python docstring for this function:
+    def save_to_file(self, path, filename, **params):
 
 Most outputs are correct or near-correct; a small fraction either output nothing or echo part of the instruction.
 
